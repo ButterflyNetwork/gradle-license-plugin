@@ -111,7 +111,6 @@ class HtmlReport(private val projects: List<Project>) {
                 li {
                   a(href = "#$currentLicense") {
                     +project.name
-                    +" (${project.version})"
                   }
                   val copyrightYear = if (project.year.isEmpty()) DEFAULT_YEAR else project.year
                   dl {

@@ -135,7 +135,7 @@ final class LicensePluginJavaSpec extends Specification {
         <body>
           <h3>Notice for packages:</h3>
           <ul>
-            <li><a href="#0">firebase-core (10.0.1)</a>
+            <li><a href="#0">firebase-core</a>
               <dl>
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
@@ -207,12 +207,12 @@ final class LicensePluginJavaSpec extends Specification {
         <body>
           <h3>Notice for packages:</h3>
           <ul>
-            <li><a href="#1934118923">appcompat-v7 (26.1.0)</a>
+            <li><a href="#1934118923">appcompat-v7</a>
               <dl>
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
             </li>
-            <li><a href="#1934118923">design (26.1.0)</a>
+            <li><a href="#1934118923">design</a>
               <dl>
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
@@ -355,7 +355,7 @@ final class LicensePluginJavaSpec extends Specification {
         <body>
           <h3>Notice for packages:</h3>
           <ul>
-            <li><a href="#-296292112">Fake dependency name (1.0.0)</a>
+            <li><a href="#-296292112">Fake dependency name</a>
               <dl>
                 <dt>Copyright &copy; 2017 name</dt>
               </dl>
@@ -434,7 +434,7 @@ final class LicensePluginJavaSpec extends Specification {
         <body>
           <h3>Notice for packages:</h3>
           <ul>
-            <li><a href="#1195092182">Fake dependency name (1.0.0)</a>
+            <li><a href="#1195092182">Fake dependency name</a>
               <dl>
                 <dt>Copyright &copy; 2017 name</dt>
               </dl>
@@ -521,7 +521,7 @@ final class LicensePluginJavaSpec extends Specification {
         <body>
           <h3>Notice for packages:</h3>
           <ul>
-            <li><a href="#1934118923">Retrofit (2.3.0)</a>
+            <li><a href="#1934118923">Retrofit</a>
               <dl>
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
@@ -530,7 +530,7 @@ final class LicensePluginJavaSpec extends Specification {
             <pre>${myGetLicenseText('apache-2.0.txt')}</pre>
       <br>
             <hr>
-            <li><a href="#-296292112">Fake dependency name (1.0.0)</a>
+            <li><a href="#-296292112">Fake dependency name</a>
               <dl>
                 <dt>Copyright &copy; 2017 name</dt>
               </dl>
@@ -639,12 +639,12 @@ final class LicensePluginJavaSpec extends Specification {
         <body>
           <h3>Notice for packages:</h3>
           <ul>
-            <li><a href="#1934118923">appcompat-v7 (26.1.0)</a>
+            <li><a href="#1934118923">appcompat-v7</a>
               <dl>
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
             </li>
-            <li><a href="#1934118923">design (26.1.0)</a>
+            <li><a href="#1934118923">design</a>
               <dl>
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
@@ -750,12 +750,12 @@ final class LicensePluginJavaSpec extends Specification {
         <body>
           <h3>Notice for packages:</h3>
           <ul>
-            <li><a href="#1934118923">appcompat-v7 (26.1.0)</a>
+            <li><a href="#1934118923">appcompat-v7</a>
               <dl>
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
             </li>
-            <li><a href="#1934118923">design (26.1.0)</a>
+            <li><a href="#1934118923">design</a>
               <dl>
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
