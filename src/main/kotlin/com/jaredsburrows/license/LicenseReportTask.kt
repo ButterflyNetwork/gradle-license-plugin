@@ -13,7 +13,9 @@ import groovy.util.XmlParser
 import groovy.xml.QName
 import org.gradle.api.DefaultTask
 import org.gradle.api.Task
+import org.gradle.api.Project as GradleProject
 import org.gradle.api.artifacts.Configuration
+import org.gradle.api.artifacts.ResolvedArtifact
 import org.gradle.api.logging.LogLevel
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
@@ -45,6 +47,7 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
   @Optional @Input var generateJsonReport = false
   @Optional @Input var copyHtmlReportToAssets = false
   @Optional @Input var copyJsonReportToAssets = false
+  @Optional @Input var explicitDependencies: List<String>? = null
   @Optional @Input var buildType: String? = null
   @Optional @Input var variantName: String? = null
   @Optional @Internal var productFlavors = listOf<ProductFlavor>()
@@ -82,8 +85,49 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
     }
   }
 
-  /** Iterate through all configurations and collect dependencies. */
   private fun initDependencies() {
+    val deps = explicitDependencies
+    if (deps != null) {
+      initExplicitDependencies(deps)
+    } else {
+      initDependenciesByCollecting()
+    }
+  }
+
+  private fun initExplicitDependencies(deps: List<String>) {
+    val allProjects =
+      setOf(project.rootProject) + project.rootProject.subprojects
+    val allArtifacts =
+      allProjects.flatMap { it.loadAllConfigurationArtifacts() }
+
+    val configurations = project.configurations
+    allArtifacts
+      .filter { deps.contains(it.moduleVersion.toString()) }
+      .forEach { artifact ->
+        val id = artifact.moduleVersion.id
+        val gav = "${id.group}:${id.name}:${id.version}@pom"
+        configurations.getByName(pomConfiguration).dependencies.add(
+          project.dependencies.add(pomConfiguration, gav)
+        )
+      }
+  }
+
+  private fun GradleProject.loadAllConfigurationArtifacts(): Set<ResolvedArtifact> =
+    configurations
+      .filter { it.name != pomConfiguration && it.name != tempPomConfiguration }
+      .flatMap {
+        try {
+          it.resolvedConfiguration
+            .lenientConfiguration
+            .artifacts
+        } catch (_: Throwable) {
+          listOf<ResolvedArtifact>()
+        }
+      }
+      .toSet()
+
+  /** Iterate through all configurations and collect dependencies. */
+  private fun initDependenciesByCollecting() {
     // Add POM information to our POM configuration
     val configurationSet = linkedSetOf<Configuration>()
     val configurations = project.configurations
@@ -153,7 +197,8 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
       .getByName(pomConfiguration)
       .resolvedConfiguration
       .lenientConfiguration
-      .artifacts.forEach { resolvedArtifact ->
+      .artifacts
+      .forEach { resolvedArtifact ->
 
       val pomFile = resolvedArtifact.file
       val node = xmlParser.parse(pomFile)
