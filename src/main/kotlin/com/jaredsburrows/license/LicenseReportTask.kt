@@ -5,6 +5,7 @@ import com.jaredsburrows.license.internal.ConsoleRenderer
 import com.jaredsburrows.license.internal.pom.Developer
 import com.jaredsburrows.license.internal.pom.License
 import com.jaredsburrows.license.internal.pom.Project
+import com.jaredsburrows.license.internal.report.CsvReport
 import com.jaredsburrows.license.internal.report.HtmlReport
 import com.jaredsburrows.license.internal.report.JsonReport
 import groovy.util.Node
@@ -13,9 +14,9 @@ import groovy.util.XmlParser
 import groovy.xml.QName
 import org.gradle.api.DefaultTask
 import org.gradle.api.Task
-import org.gradle.api.Project as GradleProject
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.ResolvedArtifact
+import org.gradle.api.artifacts.ResolvedDependency
 import org.gradle.api.logging.LogLevel
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.Internal
@@ -26,50 +27,53 @@ import java.io.File
 import java.net.URI
 import java.net.URL
 import java.util.UUID
+import org.gradle.api.Project as GradleProject
 
-/**
- * A [Task] that creates HTML and JSON reports of the current projects dependencies.
- */
+/** A [Task] that creates HTML and JSON reports of the current projects dependencies. */
 open class LicenseReportTask : DefaultTask() { // tasks can't be final
-  companion object {
-    private val xmlParser = XmlParser(false, false)
-    private const val ANDROID_SUPPORT_GROUP_ID = "com.android.support"
-    private const val APACHE_LICENSE_NAME = "The Apache Software License"
-    private const val APACHE_LICENSE_URL = "http://www.apache.org/licenses/LICENSE-2.0.txt"
-    private const val OPEN_SOURCE_LICENSES = "open_source_licenses"
-    const val HTML_EXT = ".html"
-    const val JSON_EXT = ".json"
-  }
 
   @Internal var projects = arrayListOf<Project>()
-  @Optional @Input var assetDirs = listOf<File>()
-  @Optional @Input var generateHtmlReport = false
-  @Optional @Input var generateJsonReport = false
-  @Optional @Input var copyHtmlReportToAssets = false
-  @Optional @Input var copyJsonReportToAssets = false
-  @Optional @Input var explicitDependencies: List<String>? = null
-  @Optional @Input var buildType: String? = null
-  @Optional @Input var variantName: String? = null
-  @Optional @Internal var productFlavors = listOf<ProductFlavor>()
+  @Input var assetDirs = listOf<File>()
+  @Input var generateCsvReport = false
+  @Input var generateHtmlReport = false
+  @Input var generateJsonReport = false
+  @Input var copyCsvReportToAssets = false
+  @Input var copyHtmlReportToAssets = false
+  @Input var copyJsonReportToAssets = false
+
+  @Optional @Input
+  var explicitDependencies: List<String>? = null
+
+  @Optional @Input
+  var buildType: String? = null
+
+  @Optional @Input
+  var variantName: String? = null
+  @Internal var productFlavors = listOf<ProductFlavor>()
+  @OutputFile lateinit var csvFile: File
   @OutputFile lateinit var htmlFile: File
   @OutputFile lateinit var jsonFile: File
   private var pomConfiguration = "poms"
   private var tempPomConfiguration = "tempPoms"
-
-  init {
-    // Make sure update on each run
-    outputs.upToDateWhen { false }
-  }
 
   @TaskAction fun licenseReport() {
     setupEnvironment()
     initDependencies()
     generatePOMInfo()
 
+    if (generateCsvReport) {
+      createCsvReport()
+
+      // If android project and copy enabled, copy to asset directory
+      if (!variantName.isNullOrEmpty() && copyCsvReportToAssets) {
+        copyCsvReport()
+      }
+    }
+
     if (generateHtmlReport) {
       createHtmlReport()
 
-      // If Android project and copy enabled, copy to asset directory
+      // If android project and copy enabled, copy to asset directory
       if (!variantName.isNullOrEmpty() && copyHtmlReportToAssets) {
         copyHtmlReport()
       }
@@ -78,7 +82,7 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
     if (generateJsonReport) {
       createJsonReport()
 
-      // If Android project and copy enabled, copy to asset directory
+      // If android project and copy enabled, copy to asset directory
       if (!variantName.isNullOrEmpty() && copyJsonReportToAssets) {
         copyJsonReport()
       }
@@ -147,38 +151,16 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
 
     // If Android project, add extra configurations
     variantName?.let { variant ->
-      // Add buildType configurations
-      configurations.find { it.name == "compile" }?.let {
-        configurationSet.add(configurations.getByName("${buildType}Compile"))
-      }
-      configurations.find { it.name == "api" }?.let {
-        configurationSet.add(configurations.getByName("${buildType}Api"))
-      }
-      configurations.find { it.name == "implementation" }?.let {
-        configurationSet.add(configurations.getByName("${buildType}Implementation"))
-      }
-
-      // Add productFlavors configurations
-      productFlavors.forEach { flavor ->
-        // Works for productFlavors and productFlavors with dimensions
-        if (variant.capitalize().contains(flavor.name.capitalize())) {
-          configurations.find { it.name == "compile" }?.let {
-            configurationSet.add(configurations.getByName("${flavor.name}Compile"))
-          }
-          configurations.find { it.name == "api" }?.let {
-            configurationSet.add(configurations.getByName("${flavor.name}Api"))
-          }
-          configurations.find { it.name == "implementation" }?.let {
-            configurationSet.add(configurations.getByName("${flavor.name}Implementation"))
-          }
-        }
+      configurations.find { it.name == "${variant}RuntimeClasspath" }?.also {
+        configurationSet.add(it)
       }
     }
 
     // Iterate through all the configurations's dependencies
-    configurationSet.forEach { set ->
-      if (set.isCanBeResolved) {
-        set.resolvedConfiguration.lenientConfiguration.artifacts.forEach { artifact ->
+    configurationSet.forEach { configuration ->
+      if (configuration.isCanBeResolved) {
+        val allDeps = configuration.resolvedConfiguration.lenientConfiguration.allModuleDependencies
+        getResolvedArtifactsFromResolvedDependencies(allDeps).forEach { artifact ->
           val id = artifact.moduleVersion.id
           val gav = "${id.group}:${id.name}:${id.version}@pom"
           configurations.getByName(pomConfiguration).dependencies.add(
@@ -187,6 +169,32 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
         }
       }
     }
+  }
+
+  private fun getResolvedArtifactsFromResolvedDependencies(
+    resolvedDependencies: Set<ResolvedDependency>
+  ): Set<ResolvedArtifact> {
+    val resolvedArtifacts = hashSetOf<ResolvedArtifact>()
+    for (resolvedDependency in resolvedDependencies) {
+      try {
+        if (resolvedDependency.moduleVersion == "unspecified") {
+          /**
+           * Attempting to getAllModuleArtifacts on a local library project will result
+           * in AmbiguousVariantSelectionException as there are not enough criteria
+           * to match a specific variant of the library project. Instead we skip the
+           * the library project itself and enumerate its dependencies.
+           */
+          resolvedArtifacts.addAll(
+            getResolvedArtifactsFromResolvedDependencies(resolvedDependency.children)
+          )
+        } else {
+          resolvedArtifacts.addAll(resolvedDependency.allModuleArtifacts)
+        }
+      } catch (e: Exception) {
+        logger.warn("Failed to process $resolvedDependency.name", e)
+      }
+    }
+    return resolvedArtifacts
   }
 
   /** Get POM information from the dependency artifacts. */
@@ -200,50 +208,50 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
       .artifacts
       .forEach { resolvedArtifact ->
 
-      val pomFile = resolvedArtifact.file
-      val node = xmlParser.parse(pomFile)
+        val pomFile = resolvedArtifact.file
+        val node = xmlParser.parse(pomFile)
 
-      // License information
-      val name = getName(node).trim()
-      var version = node.getAt("version").text().trim()
-      val description = node.getAt("description").text().trim()
-      val developers = arrayListOf<Developer>()
-      if (node.getAt("developers").isNotEmpty()) {
-        node.getAt("developers").getAt("developer").forEach { developer ->
-          developers.add(Developer(name = (developer as Node).getAt("name").text().trim()))
+        // License information
+        val name = getName(node).trim()
+        var version = node.getAt("version").text().trim()
+        val description = node.getAt("description").text().trim()
+        val developers = arrayListOf<Developer>()
+        if (node.getAt("developers").isNotEmpty()) {
+          node.getAt("developers").getAt("developer").forEach { developer ->
+            developers.add(Developer(name = (developer as Node).getAt("name").text().trim()))
+          }
         }
+
+        val url = node.getAt("url").text().trim()
+        val inceptionYear = node.getAt("inceptionYear").text().trim()
+
+        // Search for licenses
+        var licenses = findLicenses(pomFile)
+        if (licenses.isEmpty()) {
+          logger.log(LogLevel.WARN, "$name dependency does not have a license.")
+          licenses = arrayListOf()
+        }
+
+        // Search for version
+        if (version.isEmpty()) {
+          version = findVersion(pomFile)
+        }
+
+        // Store the information that we need
+        val module = resolvedArtifact.moduleVersion.id
+        val project = Project().apply {
+          this.name = name
+          this.description = description
+          this.version = version
+          this.licenses = licenses
+          this.url = url
+          this.developers = developers
+          this.year = inceptionYear
+          this.gav = "${module.group}:${module.name}:${module.version}"
+        }
+
+        projects.add(project)
       }
-
-      val url = node.getAt("url").text().trim()
-      val inceptionYear = node.getAt("inceptionYear").text().trim()
-
-      // Search for licenses
-      var licenses = findLicenses(pomFile)
-      if (licenses.isEmpty()) {
-        logger.log(LogLevel.WARN, "$name dependency does not have a license.")
-        licenses = arrayListOf()
-      }
-
-      // Search for version
-      if (version.isEmpty()) {
-        version = findVersion(pomFile)
-      }
-
-      // Store the information that we need
-      val module = resolvedArtifact.moduleVersion.id
-      val project = Project().apply {
-        this.name = name
-        this.description = description
-        this.version = version
-        this.licenses = licenses
-        this.url = url
-        this.developers = developers
-        this.year = inceptionYear
-        this.gav = "${module.group}:${module.name}:${module.version}"
-      }
-
-      projects.add(project)
-    }
 
     // Sort POM information by name
     projects.sortBy { it.name.toLowerCase() }
@@ -293,6 +301,47 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
   }
 
   /** Generated HTML report. */
+  private fun createCsvReport() {
+    // Remove existing file
+    csvFile.apply {
+      // Remove existing file
+      delete()
+
+      // Create directories
+      parentFile.mkdirs()
+      createNewFile()
+
+      // Write report for file
+      bufferedWriter().use { it.write(CsvReport(projects).toString()) }
+    }
+
+    // Log output directory for user
+    logger.log(LogLevel.LIFECYCLE, "Wrote CSV report to ${ConsoleRenderer().asClickableFileUrl(csvFile)}.")
+  }
+
+  private fun copyCsvReport() {
+    // Iterate through all asset directories
+    assetDirs.forEach { directory ->
+      val licenseFile = File(directory.path, OPEN_SOURCE_LICENSES + CSV_EXT)
+
+      licenseFile.apply {
+        // Remove existing file
+        delete()
+
+        // Create new file
+        parentFile.mkdirs()
+        createNewFile()
+
+        // Copy HTML file to the assets directory
+        bufferedWriter().use { it.write(csvFile.readText()) }
+      }
+
+      // Log output directory for user
+      logger.log(LogLevel.LIFECYCLE, "Copied CSV report to ${ConsoleRenderer().asClickableFileUrl(licenseFile)}.")
+    }
+  }
+
+  /** Generated HTML report. */
   private fun createHtmlReport() {
     // Remove existing file
     htmlFile.apply {
@@ -304,29 +353,11 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
       createNewFile()
 
       // Write report for file
-      bufferedWriter().use { it.write(HtmlReport(projects).string()) }
+      bufferedWriter().use { it.write(HtmlReport(projects).toString()) }
     }
 
     // Log output directory for user
     logger.log(LogLevel.LIFECYCLE, "Wrote HTML report to ${ConsoleRenderer().asClickableFileUrl(htmlFile)}.")
-  }
-
-  /** Generated JSON report. */
-  private fun createJsonReport() {
-    jsonFile.apply {
-      // Remove existing file
-      delete()
-
-      // Create directories
-      parentFile.mkdirs()
-      createNewFile()
-
-      // Write report for file
-      bufferedWriter().use { it.write(JsonReport(projects).string()) }
-    }
-
-    // Log output directory for user
-    logger.log(LogLevel.LIFECYCLE, "Wrote JSON report to ${ConsoleRenderer().asClickableFileUrl(jsonFile)}.")
   }
 
   private fun copyHtmlReport() {
@@ -349,6 +380,24 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
       // Log output directory for user
       logger.log(LogLevel.LIFECYCLE, "Copied HTML report to ${ConsoleRenderer().asClickableFileUrl(licenseFile)}.")
     }
+  }
+
+  /** Generated JSON report. */
+  private fun createJsonReport() {
+    jsonFile.apply {
+      // Remove existing file
+      delete()
+
+      // Create directories
+      parentFile.mkdirs()
+      createNewFile()
+
+      // Write report for file
+      bufferedWriter().use { it.write(JsonReport(projects).toString()) }
+    }
+
+    // Log output directory for user
+    logger.log(LogLevel.LIFECYCLE, "Wrote JSON report to ${ConsoleRenderer().asClickableFileUrl(jsonFile)}.")
   }
 
   private fun copyJsonReport() {
@@ -451,27 +500,38 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
       node.getAt("artifactId").text()
     }.trim()
   }
-}
 
-private fun File?.isNullOrEmpty(): Boolean = this == null || this.length() == 0L
+  private fun File?.isNullOrEmpty(): Boolean = this == null || this.length() == 0L
 
-private fun Node.getAt(name: String): NodeList {
-  val answer = NodeList()
-  val var3 = this.children().iterator()
+  private fun Node.getAt(name: String): NodeList {
+    val answer = NodeList()
+    val var3 = this.children().iterator()
 
-  while (var3.hasNext()) {
-    val child = var3.next()
-    if (child is Node) {
-      val childNodeName = child.name()
-      if (childNodeName is QName) {
-        if (childNodeName.matches(name)) {
+    while (var3.hasNext()) {
+      val child = var3.next()
+      if (child is Node) {
+        val childNodeName = child.name()
+        if (childNodeName is QName) {
+          if (childNodeName.matches(name)) {
+            answer.add(child)
+          }
+        } else if (name == childNodeName) {
           answer.add(child)
         }
-      } else if (name == childNodeName) {
-        answer.add(child)
       }
     }
+
+    return answer
   }
 
-  return answer
+  companion object {
+    private val xmlParser = XmlParser(false, false)
+    private const val ANDROID_SUPPORT_GROUP_ID = "com.android.support"
+    private const val APACHE_LICENSE_NAME = "The Apache Software License"
+    private const val APACHE_LICENSE_URL = "http://www.apache.org/licenses/LICENSE-2.0.txt"
+    private const val OPEN_SOURCE_LICENSES = "open_source_licenses"
+    const val CSV_EXT = ".csv"
+    const val HTML_EXT = ".html"
+    const val JSON_EXT = ".json"
+  }
 }
