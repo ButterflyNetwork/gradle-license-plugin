@@ -1,12 +1,39 @@
 # Change Log
 
-## Version 0.8.6 (2019-10-14)
+## Version 0.8.90  (2020-12-30)
+ * [#140](https://github.com/jaredsburrows/gradle-license-plugin/pull/140) Added CSV report support
+ * [#134](https://github.com/jaredsburrows/gradle-license-plugin/pull/134) Add android library subproject dependencies to the report
+
+  Many thanks to
+  [@mkubiczek](https://github.com/mkubiczek)
+  for the code contributions!
+
+## Version 0.8.80  (2020-05-29)
+ * [#127](https://github.com/jaredsburrows/gradle-license-plugin/pull/127) Remove instant app plugin, support feature, library and application
+
+## Version 0.8.70  (2020-03-03)
+ * Fix bad versioning - 0.8.7 -> 0.8.70, new snapshot is 0.8.80-SNAPSHOT
+
+  Many thanks to
+  [@PaulWoitaschek](https://github.com/PaulWoitaschek)
+  for the code contributions!
+
+## Version 0.8.7  (2020-03-01)
+ * [#112](https://github.com/jaredsburrows/gradle-license-plugin/pull/112) Fix windows file path
+ * [#114](https://github.com/jaredsburrows/gradle-license-plugin/pull/114) Include Copyright owner/date in HTML license report; show multiple licenses
+ * [#118](https://github.com/jaredsburrows/gradle-license-plugin/pull/118) Add another official spelling of the MIT License URL
+
+  Many thanks to
+  [@DonnKey](https://github.com/DonnKey)
+  for the code contributions!
+
+## Version 0.8.6  (2019-10-14)
  * Finished converting plugin to Kotlin
  * [#99](https://github.com/jaredsburrows/gradle-license-plugin/pull/99) Make sure to use correct Path.Separator
  * [#102](https://github.com/jaredsburrows/gradle-license-plugin/pull/102) Initiate extension earlier in setup process
  * [#103](https://github.com/jaredsburrows/gradle-license-plugin/pull/103) Use Console Renderer to handle cross platform terminal printing
 
-## Version 0.8.5 (2019-04-23)
+## Version 0.8.5  (2019-04-23)
  
  * Converted many files to Kotlin
  * [#57](https://github.com/jaredsburrows/gradle-license-plugin/pull/57) Eliminate duplicate licenses
