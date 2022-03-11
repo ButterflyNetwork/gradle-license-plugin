@@ -1,7 +1,7 @@
 package com.jaredsburrows.license.internal.report
 
 /** Used to be the base configuration for each report. */
-interface Report {
+internal interface Report {
   /** Return a pretty print of the report. */
   override fun toString(): String
 
@@ -14,5 +14,5 @@ interface Report {
   /** Return the empty report if no open source licenses are found. */
   fun emptyReport(): String
 
-  fun String.valueOrNull(): String? = if (this.isNotEmpty()) this else null
+  fun String.valueOrNull(): String? = this.ifEmpty { null }
 }

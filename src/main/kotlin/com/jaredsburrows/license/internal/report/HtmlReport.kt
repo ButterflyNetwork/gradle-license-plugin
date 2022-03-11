@@ -58,10 +58,10 @@ class HtmlReport(private val projects: List<Project>) : Report {
       }
 
       if (!projectsMap.containsKey(key)) {
-        projectsMap[key] = arrayListOf()
+        projectsMap[key] = mutableListOf()
       }
 
-      (projectsMap[key] as ArrayList).add(project)
+      (projectsMap[key] as MutableList).add(project)
     }
 
     return StringBuilder()
@@ -98,7 +98,7 @@ class HtmlReport(private val projects: List<Project>) : Report {
                   a(href = "#$currentLicense") {
                     +project.name
                   }
-                  val copyrightYear = if (project.year.isEmpty()) DEFAULT_YEAR else project.year
+                  val copyrightYear = project.year.ifEmpty { DEFAULT_YEAR }
                   dl {
                     if (project.developers.isNotEmpty()) {
                       project.developers.forEach { developer ->
@@ -222,8 +222,9 @@ class HtmlReport(private val projects: List<Project>) : Report {
     consumer
   ).visit(block)
 
-  companion object {
-    const val CSS_STYLE = "body { font-family: sans-serif } pre { background-color: #eeeeee; padding: 1em; white-space: pre-wrap; display: inline-block }"
+  private companion object {
+    const val CSS_STYLE =
+      "body { font-family: sans-serif } pre { background-color: #eeeeee; padding: 1em; white-space: pre-wrap; display: inline-block }"
     const val OPEN_SOURCE_LIBRARIES = "Open source licenses"
     const val NO_LIBRARIES = "None"
     const val NO_LICENSE = "No license found"

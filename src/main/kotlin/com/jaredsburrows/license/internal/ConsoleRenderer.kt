@@ -31,13 +31,13 @@ class ConsoleRenderer {
  *
  * Taken from: https://github.com/gradle/gradle/blob/master/subprojects/base-services/src/main/java/org/gradle/internal/UncheckedException.java
  */
-class UncheckedException : RuntimeException {
+private class UncheckedException : RuntimeException {
   constructor(cause: Throwable) : super(cause)
   constructor(message: String, cause: Throwable) : super(message, cause)
 
   companion object {
     /** Always throws the failure in some form. The return value is to keep the compiler happy. */
-    @JvmOverloads fun throwAsUncheckedException(
+    fun throwAsUncheckedException(
       t: Throwable,
       preserveMessage: Boolean = false
     ): RuntimeException {

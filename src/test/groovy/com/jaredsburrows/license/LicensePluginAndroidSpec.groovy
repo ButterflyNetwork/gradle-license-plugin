@@ -13,7 +13,7 @@ import spock.lang.Specification
 import spock.lang.Unroll
 
 final class LicensePluginAndroidSpec extends Specification {
-  @Rule public TemporaryFolder testProjectDir = new TemporaryFolder()
+  @Rule public final TemporaryFolder testProjectDir = new TemporaryFolder()
   private List<File> pluginClasspath
   private String classpathString
   private String mavenRepoUrl
@@ -46,7 +46,7 @@ final class LicensePluginAndroidSpec extends Specification {
       """
       buildscript {
         repositories {
-          jcenter()
+          mavenCentral()
           google()
         }
 
@@ -84,13 +84,16 @@ final class LicensePluginAndroidSpec extends Specification {
     where:
     [gradleVersion, agpVersion] << [
       [
-        '5.6.4',
-        '6.1.1'
+        '7.0.2',
+        '7.1.1',
+        '7.2'
       ],
       [
-        '3.5.0',
-        '3.6.0',
-        '4.0.0'
+        '3.5.4',
+        '3.6.4',
+        '4.0.2',
+        '4.1.3',
+        '4.2.2'
       ]
     ].combinations()
   }
@@ -119,7 +122,7 @@ final class LicensePluginAndroidSpec extends Specification {
 
     when:
     def result = gradleWithCommand(testProjectDir.root, "${taskName}", '-s')
-    def actualHtml = new File("${reportFolder}/${taskName}.html").text
+    def actualHtml = new File(reportFolder, "${taskName}.html").text
     def expectedHtml =
       """
       <html>
@@ -135,7 +138,7 @@ final class LicensePluginAndroidSpec extends Specification {
         </body>
       </html>
       """
-    def actualJson = new File("${reportFolder}/${taskName}.json").text
+    def actualJson = new File(reportFolder, "${taskName}.json").text
     def expectedJson =
       """
       []
@@ -190,7 +193,7 @@ final class LicensePluginAndroidSpec extends Specification {
 
     when:
     def result = gradleWithCommand(testProjectDir.root, "${taskName}", '-s')
-    def actualHtml = new File("${reportFolder}/${taskName}.html").text
+    def actualHtml = new File(reportFolder, "${taskName}.html").text
     def expectedHtml =
       """
       <html>
@@ -201,25 +204,27 @@ final class LicensePluginAndroidSpec extends Specification {
         <body>
           <h3>Notice for packages:</h3>
           <ul>
-            <li><a href="#1934118923">appcompat-v7</a>
+            <li>
+              <a href="#1934118923">appcompat-v7 (26.1.0)</a>
               <dl>
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
             </li>
-            <li><a href="#1934118923">design</a>
+            <li>
+              <a href="#1934118923">design (26.1.0)</a>
               <dl>
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
             </li>
-      <a name="1934118923"></a>
+            <a name="1934118923"></a>
             <pre>${myGetLicenseText('apache-2.0.txt')}</pre>
-      <br>
+            <br>
             <hr>
           </ul>
         </body>
       </html>
       """
-    def actualJson = new File("${reportFolder}/${taskName}.json").text
+    def actualJson = new File(reportFolder, "${taskName}.json").text
     def expectedJson =
       """
       [
@@ -405,7 +410,7 @@ final class LicensePluginAndroidSpec extends Specification {
 
     when:
     def result = gradleWithCommand(testProjectDir.root, "${taskName}", '-s')
-    def actualHtml = new File("${reportFolder}/${taskName}.html").text
+    def actualHtml = new File(reportFolder, "${taskName}.html").text
     def expectedHtml =
       """
       <html>
@@ -416,25 +421,27 @@ final class LicensePluginAndroidSpec extends Specification {
         <body>
           <h3>Notice for packages:</h3>
           <ul>
-            <li><a href="#1934118923">appcompat-v7</a>
+            <li>
+              <a href="#1934118923">appcompat-v7 (26.1.0)</a>
               <dl>
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
             </li>
-            <li><a href="#1934118923">design</a>
+            <li>
+              <a href="#1934118923">design (26.1.0)</a>
               <dl>
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
             </li>
-      <a name="1934118923"></a>
+            <a name="1934118923"></a>
             <pre>${myGetLicenseText('apache-2.0.txt')}</pre>
-      <br>
+            <br>
             <hr>
           </ul>
         </body>
       </html>
       """
-    def actualJson = new File("${reportFolder}/${taskName}.json").text
+    def actualJson = new File(reportFolder, "${taskName}.json").text
     def expectedJson =
       """
       [
@@ -539,7 +546,7 @@ final class LicensePluginAndroidSpec extends Specification {
 
     when:
     def result = gradleWithCommand(testProjectDir.root, "${taskName}", '-s')
-    def actualHtml = new File("${reportFolder}/${taskName}.html").text
+    def actualHtml = new File(reportFolder, "${taskName}.html").text
     def expectedHtml =
       """
       <html>
@@ -570,15 +577,15 @@ final class LicensePluginAndroidSpec extends Specification {
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
             </li>
-      <a name="1934118923"></a>
+            <a name="1934118923"></a>
             <pre>${myGetLicenseText('apache-2.0.txt')}</pre>
-      <br>
+            <br>
             <hr>
           </ul>
         </body>
       </html>
       """
-    def actualJson = new File("${reportFolder}/${taskName}.json").text
+    def actualJson = new File(reportFolder, "${taskName}.json").text
     def expectedJson =
       """
       [
@@ -752,7 +759,7 @@ final class LicensePluginAndroidSpec extends Specification {
 
     when:
     def result = gradleWithCommand(testProjectDir.root, "${taskName}", '-s')
-    def actualHtml = new File("${reportFolder}/${taskName}.html").text
+    def actualHtml = new File(reportFolder, "${taskName}.html").text
     def expectedHtml =
       """
       <html>
@@ -768,24 +775,24 @@ final class LicensePluginAndroidSpec extends Specification {
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
             </li>
-      <a name="1934118923"></a>
+            <a name="1934118923"></a>
             <pre>${myGetLicenseText('apache-2.0.txt')}</pre>
-      <br>
+            <br>
             <hr>
             <li><a href="#1783810846">Android GIF Drawable Library</a>
               <dl>
                 <dt>Copyright &copy; 20xx Karol WrXXtniak</dt>
               </dl>
             </li>
-      <a name="1783810846"></a>
+            <a name="1783810846"></a>
             <pre>${myGetLicenseText('mit.txt')}</pre>
-      <br>
+            <br>
             <hr>
           </ul>
         </body>
       </html>
       """
-    def actualJson = new File("${reportFolder}/${taskName}.json").text
+    def actualJson = new File(reportFolder, "${taskName}.json").text
     def expectedJson =
       """
       [
@@ -870,7 +877,7 @@ final class LicensePluginAndroidSpec extends Specification {
 
     when:
     def result = gradleWithCommand(testProjectDir.root, "${taskName}", '-s')
-    def actualHtml = new File("${reportFolder}/${taskName}.html").text
+    def actualHtml = new File(reportFolder, "${taskName}.html").text
     def expectedHtml =
       """
       <html>
@@ -886,14 +893,14 @@ final class LicensePluginAndroidSpec extends Specification {
                 <dt>Copyright &copy; 2017 name</dt>
               </dl>
             </li>
-      <a name="0"></a>
+            <a name="0"></a>
             <pre>No license found</pre>
             <hr>
           </ul>
         </body>
       </html>
       """
-    def actualJson = new File("${reportFolder}/${taskName}.json").text
+    def actualJson = new File(reportFolder, "${taskName}.json").text
     def expectedJson =
       """
       [
@@ -974,7 +981,7 @@ final class LicensePluginAndroidSpec extends Specification {
 
     when:
     def result = gradleWithCommand(testProjectDir.root, "${taskName}", '-s')
-    def actualHtml = new File("${reportFolder}/${taskName}.html").text
+    def actualHtml = new File(reportFolder, "${taskName}.html").text
     def expectedHtml =
       """
       <html>
@@ -990,25 +997,25 @@ final class LicensePluginAndroidSpec extends Specification {
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
             </li>
-      <a name="1934118923"></a>
+            <a name="1934118923"></a>
             <pre>${myGetLicenseText('apache-2.0.txt')}</pre>
-      <br>
+            <br>
             <hr>
             <li><a href="#-296292112">Fake dependency name</a>
               <dl>
                 <dt>Copyright &copy; 2017 name</dt>
               </dl>
             </li>
-      <a name="-296292112"></a>
+            <a name="-296292112"></a>
             <pre>Some license
-      <a href="http://website.tld/">http://website.tld/</a></pre>
-      <br>
+            <a href="http://website.tld/">http://website.tld/</a></pre>
+            <br>
             <hr>
           </ul>
         </body>
       </html>
       """
-    def actualJson = new File("${reportFolder}/${taskName}.json").text
+    def actualJson = new File(reportFolder, "${taskName}.json").text
     def expectedJson =
       """
       [
@@ -1113,7 +1120,7 @@ final class LicensePluginAndroidSpec extends Specification {
 
     when:
     def result = gradleWithCommand(testProjectDir.root, "${taskName}", '-s')
-    def actualHtml = new File("${reportFolder}/${taskName}.html").text
+    def actualHtml = new File(reportFolder, "${taskName}.html").text
     def expectedHtml =
       """
       <html>
@@ -1124,30 +1131,32 @@ final class LicensePluginAndroidSpec extends Specification {
         <body>
           <h3>Notice for packages:</h3>
           <ul>
-            <li><a href="#1934118923">design</a>
+            <li>
+              <a href="#1934118923">design (26.1.0)</a>
               <dl>
                 <dt>Copyright &copy; 20xx The original author or authors</dt>
               </dl>
             </li>
-      <a name="1934118923"></a>
+            <a name="1934118923"></a>
             <pre>${myGetLicenseText('apache-2.0.txt')}</pre>
-      <br>
+            <br>
             <hr>
-            <li><a href="#-296292112">Fake dependency name</a>
+            <li>
+              <a href="#-296292112">Fake dependency name (1.0.0)</a>
               <dl>
                 <dt>Copyright &copy; 2017 name</dt>
               </dl>
             </li>
-      <a name="-296292112"></a>
+            <a name="-296292112"></a>
             <pre>Some license
-      <a href="http://website.tld/">http://website.tld/</a></pre>
-      <br>
+                  <a href="http://website.tld/">http://website.tld/</a></pre>
+            <br>
             <hr>
           </ul>
         </body>
       </html>
       """
-    def actualJson = new File("${reportFolder}/${taskName}.json").text
+    def actualJson = new File(reportFolder, "${taskName}.json").text
     def expectedJson =
       """
       [

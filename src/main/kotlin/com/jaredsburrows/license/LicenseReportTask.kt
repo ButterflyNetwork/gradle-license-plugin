@@ -8,10 +8,10 @@ import com.jaredsburrows.license.internal.pom.Project
 import com.jaredsburrows.license.internal.report.CsvReport
 import com.jaredsburrows.license.internal.report.HtmlReport
 import com.jaredsburrows.license.internal.report.JsonReport
+import groovy.namespace.QName
 import groovy.util.Node
 import groovy.util.NodeList
-import groovy.util.XmlParser
-import groovy.xml.QName
+import groovy.xml.XmlParser
 import org.gradle.api.DefaultTask
 import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
@@ -26,14 +26,15 @@ import org.gradle.api.tasks.TaskAction
 import java.io.File
 import java.net.URI
 import java.net.URL
+import java.util.Locale
 import java.util.UUID
 import org.gradle.api.Project as GradleProject
 
 /** A [Task] that creates HTML and JSON reports of the current projects dependencies. */
-open class LicenseReportTask : DefaultTask() { // tasks can't be final
+internal open class LicenseReportTask : DefaultTask() { // tasks can't be final
 
-  @Internal var projects = arrayListOf<Project>()
-  @Input var assetDirs = listOf<File>()
+  @Internal var projects = mutableListOf<Project>()
+  @Input var assetDirs = emptyList<File>()
   @Input var generateCsvReport = false
   @Input var generateHtmlReport = false
   @Input var generateJsonReport = false
@@ -145,6 +146,7 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
     configurations.find { it.name == "api" }?.let {
       configurationSet.add(configurations.getByName("api"))
     }
+
     configurations.find { it.name == "implementation" }?.let {
       configurationSet.add(configurations.getByName("implementation"))
     }
@@ -215,7 +217,7 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
         val name = getName(node).trim()
         var version = node.getAt("version").text().trim()
         val description = node.getAt("description").text().trim()
-        val developers = arrayListOf<Developer>()
+        val developers = mutableListOf<Developer>()
         if (node.getAt("developers").isNotEmpty()) {
           node.getAt("developers").getAt("developer").forEach { developer ->
             developers.add(Developer(name = (developer as Node).getAt("name").text().trim()))
@@ -229,7 +231,7 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
         var licenses = findLicenses(pomFile)
         if (licenses.isEmpty()) {
           logger.log(LogLevel.WARN, "$name dependency does not have a license.")
-          licenses = arrayListOf()
+          licenses = mutableListOf()
         }
 
         // Search for version
@@ -254,7 +256,7 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
       }
 
     // Sort POM information by name
-    projects.sortBy { it.name.toLowerCase() }
+    projects.sortBy { it.name.lowercase(Locale.getDefault()) }
   }
 
   /** Setup configurations to collect dependencies. */
@@ -316,7 +318,10 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
     }
 
     // Log output directory for user
-    logger.log(LogLevel.LIFECYCLE, "Wrote CSV report to ${ConsoleRenderer().asClickableFileUrl(csvFile)}.")
+    logger.log(
+      LogLevel.LIFECYCLE,
+      "Wrote CSV report to ${ConsoleRenderer().asClickableFileUrl(csvFile)}."
+    )
   }
 
   private fun copyCsvReport() {
@@ -337,7 +342,10 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
       }
 
       // Log output directory for user
-      logger.log(LogLevel.LIFECYCLE, "Copied CSV report to ${ConsoleRenderer().asClickableFileUrl(licenseFile)}.")
+      logger.log(
+        LogLevel.LIFECYCLE,
+        "Copied CSV report to ${ConsoleRenderer().asClickableFileUrl(licenseFile)}."
+      )
     }
   }
 
@@ -357,7 +365,10 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
     }
 
     // Log output directory for user
-    logger.log(LogLevel.LIFECYCLE, "Wrote HTML report to ${ConsoleRenderer().asClickableFileUrl(htmlFile)}.")
+    logger.log(
+      LogLevel.LIFECYCLE,
+      "Wrote HTML report to ${ConsoleRenderer().asClickableFileUrl(htmlFile)}."
+    )
   }
 
   private fun copyHtmlReport() {
@@ -378,7 +389,10 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
       }
 
       // Log output directory for user
-      logger.log(LogLevel.LIFECYCLE, "Copied HTML report to ${ConsoleRenderer().asClickableFileUrl(licenseFile)}.")
+      logger.log(
+        LogLevel.LIFECYCLE,
+        "Copied HTML report to ${ConsoleRenderer().asClickableFileUrl(licenseFile)}."
+      )
     }
   }
 
@@ -397,7 +411,10 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
     }
 
     // Log output directory for user
-    logger.log(LogLevel.LIFECYCLE, "Wrote JSON report to ${ConsoleRenderer().asClickableFileUrl(jsonFile)}.")
+    logger.log(
+      LogLevel.LIFECYCLE,
+      "Wrote JSON report to ${ConsoleRenderer().asClickableFileUrl(jsonFile)}."
+    )
   }
 
   private fun copyJsonReport() {
@@ -418,7 +435,10 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
       }
 
       // Log output directory for user
-      logger.log(LogLevel.LIFECYCLE, "Copied JSON report to ${ConsoleRenderer().asClickableFileUrl(licenseFile)}.")
+      logger.log(
+        LogLevel.LIFECYCLE,
+        "Copied JSON report to ${ConsoleRenderer().asClickableFileUrl(licenseFile)}."
+      )
     }
   }
 
@@ -457,7 +477,7 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
 
   private fun findLicenses(pomFile: File?): List<License> {
     if (pomFile.isNullOrEmpty()) {
-      return arrayListOf()
+      return mutableListOf()
     }
     val node = xmlParser.parse(pomFile)
 
@@ -465,7 +485,7 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
     val name = getName(node)
     if (name.isEmpty()) {
       logger.log(LogLevel.WARN, "POM file is missing a name: $pomFile")
-      return arrayListOf()
+      return mutableListOf()
     }
 
     if (ANDROID_SUPPORT_GROUP_ID == node.getAt("groupId").text()) {
@@ -474,7 +494,7 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
 
     // License information found
     if (node.getAt("licenses").isNotEmpty()) {
-      val licenses = arrayListOf<License>()
+      val licenses = mutableListOf<License>()
       (node.getAt("licenses")[0] as Node).getAt("license").forEach { license ->
         val licenseName = (license as Node).getAt("name").text().trim()
         val licenseUrl = license.getAt("url").text().trim()
@@ -490,13 +510,11 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
     if (!node.getAt("parent").isEmpty()) {
       return findLicenses(getParentPomFile(node))
     }
-    return arrayListOf()
+    return mutableListOf()
   }
 
   private fun getName(node: Node): String {
-    return if (node.getAt("name").text().isNotEmpty()) {
-      node.getAt("name").text()
-    } else {
+    return node.getAt("name").text().ifEmpty {
       node.getAt("artifactId").text()
     }.trim()
   }
@@ -524,7 +542,7 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
     return answer
   }
 
-  companion object {
+  internal companion object {
     private val xmlParser = XmlParser(false, false)
     private const val ANDROID_SUPPORT_GROUP_ID = "com.android.support"
     private const val APACHE_LICENSE_NAME = "The Apache Software License"
