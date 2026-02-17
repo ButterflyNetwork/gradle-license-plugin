@@ -3,8 +3,6 @@ package com.jaredsburrows.license
 import com.android.build.gradle.AppExtension
 import com.android.build.gradle.AppPlugin
 import com.android.build.gradle.BaseExtension
-import com.android.build.gradle.FeatureExtension
-import com.android.build.gradle.FeaturePlugin
 import com.android.build.gradle.LibraryExtension
 import com.android.build.gradle.LibraryPlugin
 import com.android.build.gradle.api.BaseVariant
@@ -21,25 +19,17 @@ class LicensePlugin : Plugin<Project> {
   override fun apply(project: Project) {
     val extension = project.extensions.create("licenseReport", LicenseReportExtension::class.java)
 
-    project.plugins.all {
-      when (it) {
-        is JavaPlugin -> configureJavaProject(project, extension)
-        is FeaturePlugin -> {
-          project.extensions[FeatureExtension::class].run {
-            configureAndroidProject(project, extension, featureVariants)
-            configureAndroidProject(project, extension, libraryVariants)
-          }
-        }
-        is LibraryPlugin -> {
-          project.extensions[LibraryExtension::class].run {
-            configureAndroidProject(project, extension, libraryVariants)
-          }
-        }
-        is AppPlugin -> {
-          project.extensions[AppExtension::class].run {
-            configureAndroidProject(project, extension, applicationVariants)
-          }
-        }
+    project.plugins.withType(JavaPlugin::class.java) {
+      configureJavaProject(project, extension)
+    }
+    project.plugins.withType(LibraryPlugin::class.java) {
+      project.extensions[LibraryExtension::class].run {
+        configureAndroidProject(project, extension, libraryVariants)
+      }
+    }
+    project.plugins.withType(AppPlugin::class.java) {
+      project.extensions[AppExtension::class].run {
+        configureAndroidProject(project, extension, applicationVariants)
       }
     }
   }
@@ -47,7 +37,7 @@ class LicensePlugin : Plugin<Project> {
   /** Configure for Java projects. */
   private fun configureJavaProject(project: Project, extension: LicenseReportExtension) {
     val taskName = "licenseReport"
-    val path = "${project.buildDir}/reports/licenses/$taskName".replace('/', File.separatorChar)
+    val path = "${project.layout.buildDirectory.get().asFile}/reports/licenses/$taskName".replace('/', File.separatorChar)
 
     // Create tasks
     project.tasks.create(taskName, LicenseReportTask::class.java).apply {
@@ -67,16 +57,18 @@ class LicensePlugin : Plugin<Project> {
   }
 
   /** Configure for Android projects. */
+  @Suppress("DEPRECATION")
   private fun configureAndroidProject(
     project: Project,
     extension: LicenseReportExtension,
     variants: DomainObjectSet<out BaseVariant>? = null
   ) {
     // Configure tasks for all variants
-    variants?.all { variant ->
-      val name = variant.name.capitalize()
+    variants?.all(org.gradle.api.Action {
+      val variant = this
+      val name = variant.name.replaceFirstChar { it.titlecase() }
       val taskName = "license${name}Report"
-      val path = "${project.buildDir}/reports/licenses/$taskName".replace('/', File.separatorChar)
+      val path = "${project.layout.buildDirectory.get().asFile}/reports/licenses/$taskName".replace('/', File.separatorChar)
 
       // Create tasks based on variant
       project.tasks.create(taskName, LicenseReportTask::class.java).apply {
@@ -106,7 +98,7 @@ class LicensePlugin : Plugin<Project> {
         variantName = variant.name
         productFlavors = variant.productFlavors
       }
-    }
+    })
   }
 
   private operator fun <T : Any> ExtensionContainer.get(type: KClass<T>): T {
