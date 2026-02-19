@@ -1,6 +1,5 @@
 package com.jaredsburrows.license
 
-import com.android.builder.model.ProductFlavor
 import com.jaredsburrows.license.internal.ConsoleRenderer
 import com.jaredsburrows.license.internal.pom.Developer
 import com.jaredsburrows.license.internal.pom.License
@@ -10,8 +9,8 @@ import com.jaredsburrows.license.internal.report.HtmlReport
 import com.jaredsburrows.license.internal.report.JsonReport
 import groovy.util.Node
 import groovy.util.NodeList
-import groovy.util.XmlParser
-import groovy.xml.QName
+import groovy.xml.XmlParser
+import groovy.namespace.QName
 import org.gradle.api.DefaultTask
 import org.gradle.api.Task
 import org.gradle.api.artifacts.Configuration
@@ -49,7 +48,6 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
 
   @Optional @Input
   var variantName: String? = null
-  @Internal var productFlavors = listOf<ProductFlavor>()
   @OutputFile lateinit var csvFile: File
   @OutputFile lateinit var htmlFile: File
   @OutputFile lateinit var jsonFile: File
@@ -110,9 +108,9 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
       .forEach { artifact ->
         val id = artifact.moduleVersion.id
         val gav = "${id.group}:${id.name}:${id.version}@pom"
-        configurations.getByName(pomConfiguration).dependencies.add(
-          project.dependencies.add(pomConfiguration, gav)
-        )
+        project.dependencies.add(pomConfiguration, gav)?.let { dep ->
+          configurations.getByName(pomConfiguration).dependencies.add(dep)
+        }
       }
   }
 
@@ -163,9 +161,9 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
         getResolvedArtifactsFromResolvedDependencies(allDeps).forEach { artifact ->
           val id = artifact.moduleVersion.id
           val gav = "${id.group}:${id.name}:${id.version}@pom"
-          configurations.getByName(pomConfiguration).dependencies.add(
-            project.dependencies.add(pomConfiguration, gav)
-          )
+          project.dependencies.add(pomConfiguration, gav)?.let { dep ->
+            configurations.getByName(pomConfiguration).dependencies.add(dep)
+          }
         }
       }
     }
@@ -254,7 +252,7 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
       }
 
     // Sort POM information by name
-    projects.sortBy { it.name.toLowerCase() }
+    projects.sortBy { it.name.lowercase() }
   }
 
   /** Setup configurations to collect dependencies. */
@@ -287,9 +285,9 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
     // Add dependency to temporary configuration
     val configurations = project.configurations
     configurations.create(tempPomConfiguration)
-    configurations.getByName(tempPomConfiguration).dependencies.add(
-      project.dependencies.add(tempPomConfiguration, dependency)
-    )
+    project.dependencies.add(tempPomConfiguration, dependency)?.let { dep ->
+      configurations.getByName(tempPomConfiguration).dependencies.add(dep)
+    }
 
     val pomFile = project.configurations.getByName(tempPomConfiguration)
       .resolvedConfiguration.lenientConfiguration.artifacts.firstOrNull()?.file
