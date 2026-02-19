@@ -1,6 +1,5 @@
 package com.jaredsburrows.license
 
-import com.android.builder.model.ProductFlavor
 import com.jaredsburrows.license.internal.ConsoleRenderer
 import com.jaredsburrows.license.internal.pom.Developer
 import com.jaredsburrows.license.internal.pom.License
@@ -49,7 +48,6 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
 
   @Optional @Input
   var variantName: String? = null
-  @Internal var productFlavors = listOf<ProductFlavor>()
   @OutputFile lateinit var csvFile: File
   @OutputFile lateinit var htmlFile: File
   @OutputFile lateinit var jsonFile: File
