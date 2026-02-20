@@ -1,21 +1,19 @@
 package com.jaredsburrows.license.internal.report
 
 import com.jaredsburrows.license.internal.LicenseHelper
-import com.jaredsburrows.license.internal.pom.License
-import com.jaredsburrows.license.internal.pom.Project
-import kotlinx.html.A
 import kotlinx.html.Entities
-import kotlinx.html.FlowOrInteractiveOrPhrasingContent
-import kotlinx.html.HtmlTagMarker
-import kotlinx.html.attributesMapOf
+import kotlinx.html.a
 import kotlinx.html.body
 import kotlinx.html.br
+import kotlinx.html.dd
 import kotlinx.html.dl
 import kotlinx.html.dt
 import kotlinx.html.h3
 import kotlinx.html.head
 import kotlinx.html.hr
 import kotlinx.html.html
+import kotlinx.html.id
+import kotlinx.html.lang
 import kotlinx.html.li
 import kotlinx.html.pre
 import kotlinx.html.stream.appendHTML
@@ -23,21 +21,28 @@ import kotlinx.html.style
 import kotlinx.html.title
 import kotlinx.html.ul
 import kotlinx.html.unsafe
-import kotlinx.html.visit
+import org.apache.maven.model.License
+import org.apache.maven.model.Model
 
 /**
  * Generates HTML report of projects dependencies.
  *
- * @property projects list of [Project]s for thr HTML report.
+ * @property projects list of [Model]s for thr HTML report.
  */
-class HtmlReport(private val projects: List<Project>) : Report {
-
+class HtmlReport(
+  private val projects: List<Model>,
+  private val showVersions: Boolean,
+) : Report {
   override fun toString(): String = report()
+
+  override fun name(): String = NAME
+
+  override fun extension(): String = EXTENSION
 
   override fun report(): String = if (projects.isEmpty()) emptyReport() else fullReport()
 
   override fun fullReport(): String {
-    val projectsMap = hashMapOf<String?, List<Project>>()
+    val projectsMap = hashMapOf<String, List<Model>>()
     val licenseMap = LicenseHelper.licenseMap
 
     // Store packages by licenses: build a composite key of all the licenses, sorted in the (probably vain)
@@ -46,11 +51,11 @@ class HtmlReport(private val projects: List<Project>) : Report {
       val keys = mutableListOf<String>()
 
       // first check to see if the project's license is in our list of known licenses.
-      if (!project.licenses.isNullOrEmpty()) {
-        project.licenses.forEach { license -> keys.add(getLicenseKey(license)) }
+      if (project.licenses.isNotEmpty()) {
+        project.licenses.forEach { license -> keys += getLicenseKey(license) }
       }
 
-      keys.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it })
+      keys.sortWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it })
       var key = ""
       if (keys.isNotEmpty()) {
         // No Licenses -> empty key, sort first
@@ -58,80 +63,94 @@ class HtmlReport(private val projects: List<Project>) : Report {
       }
 
       if (!projectsMap.containsKey(key)) {
-        projectsMap[key] = arrayListOf()
+        projectsMap[key] = mutableListOf()
       }
 
-      (projectsMap[key] as ArrayList).add(project)
+      (projectsMap[key] as MutableList).add(project)
     }
 
-    return StringBuilder()
-      .appendHTML()
-      .html {
-        head {
-          style {
-            unsafe { +CSS_STYLE }
-          }
-          title {
-            unsafe { +OPEN_SOURCE_LIBRARIES }
-          }
-        }
+    val sortedProjectsList =
+      projectsMap.entries
+        .map { (key, projects) ->
+          Pair(key, projects.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }))
+        }.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.first })
 
-        body {
-          h3 {
-            unsafe { +NOTICE_LIBRARIES }
+    return buildString {
+      appendLine(DOCTYPE) // createHTMLDocument() add doctype and meta
+      appendHTML()
+        .html {
+          lang = "en"
+          head {
+            unsafe { +META }
+            style {
+              unsafe { +CSS_STYLE }
+            }
+            title { +OPEN_SOURCE_LIBRARIES }
           }
-          ul {
-            projectsMap.entries.forEach { entry ->
-              val sortedProjects = entry.value.sortedWith(
-                compareBy(String.CASE_INSENSITIVE_ORDER) { it.name }
-              )
 
-              var currentProject: Project? = null
+          body {
+            h3 {
+              +NOTICE_LIBRARIES
+            }
+            sortedProjectsList.forEach { (key, sortedProjects) ->
+              var currentProject: Model? = null
               var currentLicense: Int? = null
 
-              sortedProjects.forEach { project ->
-                currentProject = project
-                currentLicense = entry.key.hashCode()
+              ul {
+                sortedProjects.forEach { project ->
+                  currentProject = project
+                  currentLicense = key.hashCode()
 
-                // Display libraries
-                li {
-                  a(href = "#$currentLicense") {
-                    +project.name
-                  }
-                  val copyrightYear = if (project.year.isEmpty()) DEFAULT_YEAR else project.year
-                  dl {
-                    if (project.developers.isNotEmpty()) {
-                      project.developers.forEach { developer ->
+                  // Display libraries
+                  li {
+                    a(href = "#$currentLicense") {
+                      +project.name
+                      if (showVersions) {
+                        +" (${project.version})"
+                      }
+                    }
+                    val copyrightYear = project.inceptionYear.ifEmpty { DEFAULT_YEAR }
+                    dl {
+                      if (project.developers.isNotEmpty()) {
+                        project.developers.forEach { developer ->
+                          dt {
+                            +COPYRIGHT
+                            +Entities.copy
+                            +" $copyrightYear ${developer.id}"
+                          }
+                          dd { }
+                        }
+                      } else {
                         dt {
                           +COPYRIGHT
                           +Entities.copy
-                          +" $copyrightYear ${developer.name}"
+                          +" $copyrightYear $DEFAULT_AUTHOR"
                         }
-                      }
-                    } else {
-                      dt {
-                        +COPYRIGHT
-                        +Entities.copy
-                        +" $copyrightYear $DEFAULT_AUTHOR"
+                        dd { }
                       }
                     }
                   }
                 }
               }
 
-              // This isn't correctly indented in the html source (but is otherwise correct).
-              // It appears to be a bug in the DSL implementation from what little I see on the web.
-              a(name = currentLicense.toString())
+              a {
+                id = currentLicense.toString()
+              }
 
               // Display associated license text with libraries
               val licenses = currentProject?.licenses
               if (licenses.isNullOrEmpty()) {
                 pre {
-                  unsafe { +NO_LICENSE }
+                  +NO_LICENSE
                 }
               } else {
-                licenses.forEach { license ->
-                  val key = getLicenseKey(license)
+                val sortedKeysAndLicenses =
+                  licenses
+                    .map { license ->
+                      Pair(getLicenseKey(license), license)
+                    }.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.first })
+
+                sortedKeysAndLicenses.forEach { (key, license) ->
                   if (key.isNotEmpty() && licenseMap.values.contains(key)) {
                     // license from license map
                     pre {
@@ -156,7 +175,7 @@ class HtmlReport(private val projects: List<Project>) : Report {
                       }
                     } else {
                       pre {
-                        unsafe { +NO_LICENSE }
+                        +NO_LICENSE
                       }
                     }
                   }
@@ -167,32 +186,37 @@ class HtmlReport(private val projects: List<Project>) : Report {
             }
           }
         }
-      }.toString()
+    }
   }
 
-  override fun emptyReport(): String = StringBuilder()
-    .appendHTML()
-    .html {
-      head {
-        style {
-          unsafe { +CSS_STYLE }
-        }
-        title { +OPEN_SOURCE_LIBRARIES }
-      }
+  override fun emptyReport(): String =
+    buildString {
+      appendLine(DOCTYPE) // createHTMLDocument() add doctype and meta
+      appendHTML()
+        .html {
+          lang = "en"
+          head {
+            unsafe { +META }
+            style {
+              unsafe { +CSS_STYLE }
+            }
+            title { +OPEN_SOURCE_LIBRARIES }
+          }
 
-      body {
-        h3 {
-          unsafe { +NO_LIBRARIES }
+          body {
+            h3 {
+              +NO_LIBRARIES
+            }
+          }
         }
-      }
-    }.toString()
+    }
 
   /**
    * See if the license is in our list of known licenses (which coalesces differing URLs to the
    * same license text). If not, use the URL if present. Else "".
    */
-  private fun getLicenseKey(license: License): String {
-    return when {
+  private fun getLicenseKey(license: License): String =
+    when {
       // look up by url
       LicenseHelper.licenseMap.containsKey(license.url) -> LicenseHelper.licenseMap[license.url]
       // then by name
@@ -200,30 +224,24 @@ class HtmlReport(private val projects: List<Project>) : Report {
       // otherwise, use the url as a key
       else -> license.url
     } as String
-  }
 
-  @HtmlTagMarker private fun FlowOrInteractiveOrPhrasingContent.a(
-    href: String? = null,
-    target: String? = null,
-    classes: String? = null,
-    name: String? = null,
-    block: A.() -> Unit = {}
-  ): Unit = A(
-    attributesMapOf(
-      "href",
-      href,
-      "target",
-      target,
-      "class",
-      classes,
-      "name",
-      name
-    ),
-    consumer
-  ).visit(block)
+  private companion object {
+    private const val EXTENSION = "html"
+    private const val NAME = "HTML"
+    const val DOCTYPE = "<!DOCTYPE html>"
+    const val META = "<meta http-equiv=\"content-type\" content=\"text/html; charset=utf-8\">"
+    const val CSS_STYLE =
+      // Default light theme styles
+      "body { font-family: sans-serif; background-color: #ffffff; color: #000000; } " +
+        "a { color: #0000EE; } " +
+        "pre { background-color: #eeeeee; padding: 1em; white-space: pre-wrap; " +
+        "word-break: break-word; display: inline-block; } " +
 
-  companion object {
-    const val CSS_STYLE = "body { font-family: sans-serif } pre { background-color: #eeeeee; padding: 1em; white-space: pre-wrap; display: inline-block }"
+        // Dark theme styles
+        "@media (prefers-color-scheme: dark) { " +
+        "body { background-color: #121212; color: #E0E0E0; } " +
+        "a { color: #BB86FC; } " +
+        "pre { background-color: #333333; color: #E0E0E0; } }"
     const val OPEN_SOURCE_LIBRARIES = "Open source licenses"
     const val NO_LIBRARIES = "None"
     const val NO_LICENSE = "No license found"
@@ -233,10 +251,11 @@ class HtmlReport(private val projects: List<Project>) : Report {
     const val DEFAULT_YEAR = "20xx"
     private const val MISSING_LICENSE = "Missing standard license text for: "
 
-    @JvmStatic fun getLicenseText(fileName: String): String {
-      return HtmlReport::class.java.getResource("/license/$fileName")
+    @JvmStatic
+    fun getLicenseText(fileName: String): String =
+      HtmlReport::class.java
+        .getResource("/license/$fileName")
         ?.readText()
-        ?: MISSING_LICENSE + fileName
-    }
+        ?: (MISSING_LICENSE + fileName)
   }
 }

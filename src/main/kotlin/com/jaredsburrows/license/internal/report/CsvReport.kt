@@ -1,54 +1,60 @@
 package com.jaredsburrows.license.internal.report
 
-import com.jaredsburrows.license.internal.pom.Project
+import org.apache.maven.model.Model
 
 /**
  * Generates CSV report of projects dependencies.
  *
- * @property projects list of [Project]s for thr CSV report.
+ * @property projects list of [Model]s for thr CSV report.
  */
-class CsvReport(private val projects: List<Project>) : Report {
-
+class CsvReport(
+  private val projects: List<Model>,
+) : Report {
   override fun toString(): String = report()
+
+  override fun name(): String = NAME
+
+  override fun extension(): String = EXTENSION
 
   override fun report(): String = if (projects.isEmpty()) emptyReport() else fullReport()
 
   override fun fullReport(): String {
-    val projectInfoList = arrayListOf<String>()
-    projectInfoList.add(COLUMNS)
+    val projectInfoList = mutableListOf<String>()
+    projectInfoList += COLUMNS
 
     projects.map { project ->
-      val projectInfo = arrayListOf<String?>().apply {
-        // Project Name
-        addCsvString(project.name)
+      val projectInfo =
+        mutableListOf<String?>().apply {
+          // Project Name
+          addCsvString(project.name)
 
-        // Project Description
-        addCsvString(project.description)
+          // Project Description
+          addCsvString(project.description)
 
-        // Project Version
-        addCsvString(project.version)
+          // Project Version
+          addCsvString(project.version)
 
-        // Project Developers
-        addCsvList(project.developers) { it.name }
+          // Project Developers
+          addCsvList(project.developers) { it.id }
 
-        // Project Url
-        addCsvString(project.url)
+          // Project Url
+          addCsvString(project.url)
 
-        // Project Year
-        addCsvString(project.year)
+          // Project Year
+          addCsvString(project.inceptionYear)
 
-        // Project License Names
-        addCsvList(project.licenses) { it.name }
+          // Project License Names
+          addCsvList(project.licenses) { it.name }
 
-        // Project License Url
-        addCsvList(project.licenses) { it.url }
+          // Project License Url
+          addCsvList(project.licenses) { it.url }
 
-        // Project Dependency
-        addCsvString(project.gav)
-      }
+          // Project Dependency
+          addCsvString("${project.groupId}:${project.artifactId}:${project.version}")
+        }
 
       // Add each row to the list
-      projectInfoList.add(projectInfo.toCsv())
+      projectInfoList += projectInfo.toCsv()
     }
 
     // Separate each record with a new line
@@ -58,32 +64,44 @@ class CsvReport(private val projects: List<Project>) : Report {
   override fun emptyReport(): String = EMPTY_CSV
 
   /** Convert list of elements to comma separated list. */
-  private fun ArrayList<String?>.toCsv(): String = this.joinToString(separator = ",")
+  private fun MutableList<String?>.toCsv(): String = this.joinToString(separator = ",") { it ?: "" }
 
   /** Add elements to Csv. */
-  private fun ArrayList<String?>.addCsvString(element: String): Boolean {
-    return this.add(element.valueOrNull())
+  private fun MutableList<String?>.addCsvString(element: String): Boolean {
+    val escaped =
+      element
+        .valueOrNull()
+        ?.replace("\"", "\"\"")
+        ?.let { el ->
+          when {
+            el.contains(",") ||
+              el.contains("\n") ||
+              el.contains("'") ||
+              el.contains("\\") ||
+              el.contains("\"")
+            -> "\"$el\""
+
+            else -> el
+          }
+        }
+    return this.add(escaped)
   }
 
   /** Add List of elements to Csv as comma separated list with quotes. */
-  private fun <T> ArrayList<String?>.addCsvList(
+  private fun <T> MutableList<String?>.addCsvList(
     elements: List<T>,
-    transform: ((T) -> CharSequence)? = null
-  ): Boolean {
-    return when {
+    transform: ((T) -> CharSequence)? = null,
+  ): Boolean =
+    when {
       elements.isEmpty() -> this.add(null)
-      else -> {
-        val blah = elements.joinToString(separator = ",", transform = transform)
-        when (elements.size) {
-          1 -> this.add(blah)
-          else -> this.add("\"${blah}\"")
-        }
-      }
+      else -> addCsvString(elements.joinToString(separator = ",", transform = transform))
     }
-  }
 
-  companion object {
-    private const val COLUMNS = "project,description,version,developers,url,year,licenses,license urls,dependency"
+  private companion object {
+    private const val EXTENSION = "csv"
+    private const val NAME = "CSV"
+    private const val COLUMNS =
+      "project,description,version,developers,url,year,licenses,license urls,dependency"
     private const val EMPTY_CSV = ""
   }
 }
