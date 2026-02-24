@@ -116,7 +116,7 @@ open class LicenseReportTask : DefaultTask() { // tasks can't be final
 
   private fun GradleProject.loadAllConfigurationArtifacts(): Set<ResolvedArtifact> =
     configurations
-      .filter { it.name != pomConfiguration && it.name != tempPomConfiguration }
+      .filter { it.name != pomConfiguration && it.name != tempPomConfiguration && it.isCanBeResolved }
       .flatMap {
         try {
           it.resolvedConfiguration
