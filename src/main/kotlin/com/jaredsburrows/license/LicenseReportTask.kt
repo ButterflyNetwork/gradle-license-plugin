@@ -85,6 +85,10 @@ internal abstract class LicenseReportTask
     @Input
     var showVersions = false
 
+    @Optional
+    @Input
+    var explicitDependencies: List<String>? = null
+
     private val projects = mutableListOf<Model>()
 
     init {

@@ -49,4 +49,11 @@ open class LicenseReportExtension {
 
   /** Whether to show the licenses in the reports (As of now, only affects HTML since it is used in the app itself). */
   var showVersions = false
+
+  /**
+   * Explicit list of dependency coordinates to include in the license report.
+   * Format: "group:name" or "group:name:version". Matching uses group:name only.
+   * When non-null, only matching dependencies appear. When null, all are reported.
+   */
+  var explicitDependencies: List<String>? = null
 }
