@@ -238,7 +238,7 @@ private fun Project.buildPomInput(
       val broadComponents = linkedSetOf<ModuleComponentIdentifier>()
       val allProjects = rootProject.allprojects
       for (proj in allProjects) {
-        for (config in proj.configurations) {
+        for (config in proj.configurations.toList()) {
           if (!config.isCanBeResolved) continue
           try {
             config.incoming.resolutionResult.allComponents
