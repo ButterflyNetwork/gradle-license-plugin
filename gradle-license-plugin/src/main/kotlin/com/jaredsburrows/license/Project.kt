@@ -97,7 +97,7 @@ internal fun Project.configureCommon(
   val reportingExtension = extensions.getByType(ReportingExtension::class.java)
   val licenseExtension = extensions.getByType(LicenseReportExtension::class.java)
 
-  val pomInput = buildPomInput(configurationNames)
+  val pomInput = buildPomInput(configurationNames, licenseExtension.explicitDependencies)
 
   task.apply {
     outputDir = reportingExtension.file("licenses")
@@ -118,6 +118,7 @@ internal fun Project.configureCommon(
     useVariantSpecificAssetDirs = licenseExtension.useVariantSpecificAssetDirs
     ignoredPatterns = licenseExtension.ignoredPatterns
     showVersions = licenseExtension.showVersions
+    explicitDependencies = licenseExtension.explicitDependencies
   }
 }
 
@@ -127,7 +128,10 @@ private data class PomInput(
   val coordinateToFile: Map<String, String>,
 )
 
-private fun Project.buildPomInput(configurationNames: List<String>): PomInput {
+private fun Project.buildPomInput(
+  configurationNames: List<String>,
+  explicitDependencies: List<String>?,
+): PomInput {
   val fileCollection = objects.fileCollection()
   val coordinateToFile = sortedMapOf<String, String>()
   val roots = linkedSetOf<String>()
@@ -174,6 +178,146 @@ private fun Project.buildPomInput(configurationNames: List<String>): PomInput {
       roots += coordinate
       fileCollection.from(pomFile)
     }
+  }
+
+  // When explicitDependencies is set, filter roots to the allowlist and perform
+  // broad scan + fallback POM resolution for any missing entries.
+  if (explicitDependencies != null) {
+    val validDeps =
+      explicitDependencies.filter { dep ->
+        val parts = dep.split(":")
+        val valid = parts.size >= 2 && parts[0].isNotEmpty() && parts[1].isNotEmpty()
+        if (!valid) {
+          logger.warn("explicitDependencies: ignoring malformed entry '$dep' (expected 'group:module' or 'group:module:version')")
+        }
+        valid
+      }
+
+    val allowlist =
+      validDeps
+        .map { dep ->
+          val parts = dep.split(":")
+          "${parts[0]}:${parts[1]}"
+        }.toSet()
+
+    val explicitVersionMap =
+      validDeps.associate { dep ->
+        val parts = dep.split(":")
+        val key = "${parts[0]}:${parts[1]}"
+        key to (if (parts.size >= 3) parts[2] else "")
+      }
+
+    // Filter roots to only those matching the allowlist
+    val filteredRoots =
+      roots
+        .filter { coordinate ->
+          val parts = coordinate.split(":")
+          if (parts.size >= 2) "${parts[0]}:${parts[1]}" in allowlist else false
+        }.toMutableList()
+
+    // Identify which allowlisted dependencies are missing from the primary scan
+    val foundKeys =
+      filteredRoots
+        .map { coordinate ->
+          val parts = coordinate.split(":")
+          "${parts[0]}:${parts[1]}"
+        }.toSet()
+
+    val missingKeys = allowlist - foundKeys
+
+    if (missingKeys.isNotEmpty()) {
+      logger.lifecycle(
+        "explicitDependencies: ${missingKeys.size} dependencies not found in primary scan, performing broad scan...",
+      )
+
+      // Broad scan: iterate all resolvable configurations across rootProject + subprojects
+      val broadComponents = linkedSetOf<ModuleComponentIdentifier>()
+      val allProjects = rootProject.allprojects
+      for (proj in allProjects) {
+        for (config in proj.configurations.toList()) {
+          if (!config.isCanBeResolved) continue
+          try {
+            config.incoming.resolutionResult.allComponents
+              .map { it.id }
+              .filterIsInstance<ModuleComponentIdentifier>()
+              .filter { "${it.group}:${it.module}" in missingKeys }
+              .forEach { broadComponents += it }
+          } catch (_: Exception) {
+            // Some configurations may fail to resolve; skip them
+          }
+        }
+      }
+
+      if (broadComponents.isNotEmpty()) {
+        logger.lifecycle(
+          "explicitDependencies: found ${broadComponents.size} components in broad scan, resolving POMs...",
+        )
+
+        // Batch POM resolution for broad-scanned components
+        try {
+          val broadResult =
+            dependencies
+              .createArtifactResolutionQuery()
+              .forComponents(broadComponents.toList())
+              .withArtifacts(MavenModule::class.java, MavenPomArtifact::class.java)
+              .execute()
+
+          broadResult.resolvedComponents.forEach { component ->
+            val componentId = component.id
+            if (componentId !is ModuleComponentIdentifier) return@forEach
+
+            val pomFile =
+              component
+                .getArtifacts(MavenPomArtifact::class.java)
+                .filterIsInstance<ResolvedArtifactResult>()
+                .firstOrNull()
+                ?.file
+                ?: return@forEach
+
+            val coordinate = "${componentId.group}:${componentId.module}:${componentId.version}"
+            coordinateToFile.putIfAbsent(coordinate, pomFile.absolutePath)
+            filteredRoots += coordinate
+            fileCollection.from(pomFile)
+          }
+        } catch (e: Exception) {
+          logger.warn("explicitDependencies: batch POM resolution failed: ${e.message}")
+        }
+      }
+
+      // Per-module fallback for still-unresolved components
+      val stillResolvedKeys =
+        filteredRoots
+          .map { coordinate ->
+            val parts = coordinate.split(":")
+            "${parts[0]}:${parts[1]}"
+          }.toSet()
+
+      val stillMissing = missingKeys - stillResolvedKeys
+
+      for (key in stillMissing) {
+        val (group, module) = key.split(":")
+        val component = broadComponents.find { "${it.group}:${it.module}" == key }
+        val version = component?.version ?: explicitVersionMap[key] ?: ""
+
+        if (version.isNotEmpty()) {
+          val pomFile = resolvePomFile(group, module, version)
+          if (pomFile != null) {
+            val coordinate = "$group:$module:$version"
+            coordinateToFile.putIfAbsent(coordinate, pomFile.absolutePath)
+            filteredRoots += coordinate
+            fileCollection.from(pomFile)
+          } else {
+            logger.warn("explicitDependencies: could not resolve POM for $group:$module:$version")
+          }
+        } else {
+          logger.warn("explicitDependencies: no version available for $group:$module, skipping")
+        }
+      }
+    }
+
+    // Replace roots with the filtered+augmented set
+    roots.clear()
+    roots.addAll(filteredRoots)
   }
 
   val mavenReader = MavenXpp3Reader()
