@@ -963,6 +963,7 @@ final class LicensePluginAndroidSpec extends Specification {
   @Unroll
   def '#taskName with default buildTypes, multi module and android and java'() {
     given:
+    testProjectDir.newFolder('subproject')
     testProjectDir.newFile('settings.gradle') <<
       """
       include 'subproject'
@@ -1115,6 +1116,7 @@ final class LicensePluginAndroidSpec extends Specification {
   @Unroll
   def '#taskName with default buildTypes, multi module and android and android'() {
     given:
+    testProjectDir.newFolder('subproject')
     testProjectDir.newFile('settings.gradle') <<
       """
       include 'subproject'
@@ -1157,7 +1159,7 @@ final class LicensePluginAndroidSpec extends Specification {
         apply plugin: 'com.android.application'
 
         android {
-          namespace 'com.example'
+          namespace 'com.example.subproject'
           compileSdkVersion $compileSdkVersion
         }
 
