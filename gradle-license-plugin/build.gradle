@@ -53,6 +53,10 @@ dependencies {
   testImplementation libs.spock, { exclude module: 'groovy-all' } // Use localGroovy()
   testImplementation libs.xmlunit
   testImplementation libs.commons
+
+  // Gradle 9 no longer auto-loads the JUnit Platform launcher; declare it
+  // explicitly so Spock 2.x (which runs on JUnit Platform) can start.
+  testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
 gradlePlugin {

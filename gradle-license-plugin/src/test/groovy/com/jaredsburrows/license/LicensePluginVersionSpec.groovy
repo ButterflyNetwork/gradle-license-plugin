@@ -65,22 +65,10 @@ final class LicensePluginVersionSpec extends Specification {
     result.output.find("Wrote Text report to .*${reportFolder}/licenseReport.txt.")
 
     where:
+    // AGP 9 (used as `testRuntimeOnly`) requires Gradle 9.1+. Older Gradle
+    // versions are no longer supported by this fork.
     gradleVersion << [
-      '7.3.3',
-      '7.4.2',
-      '7.5.1',
-      '7.6.3',
-      '8.0.2',
-      '8.1.1',
-      '8.2.1',
-      '8.3',
-      '8.4',
-      '8.5',
-      '8.6',
-      '8.7',
-      '8.8',
-      '8.9',
-      '8.10.2',
+      '9.1.0',
     ]
   }
 
@@ -128,27 +116,11 @@ final class LicensePluginVersionSpec extends Specification {
     result.output.find("Wrote Text report to .*${reportFolder}/licenseDebugReport.txt.")
 
     where:
-    // gradle version 7.3.3 for this repo
+    // AGP 9 requires Gradle 9.1+. The host repo (ButterflyNetwork/software)
+    // builds this fork only against AGP 9.x, so legacy AGP × Gradle combos
+    // are no longer exercised.
     [agpVersion, gradleVersion] << [
-      ['3.6.4', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['4.0.2', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['4.1.3', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['4.2.2', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['7.0.4', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['7.1.3', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['7.2.2', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['7.3.1', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['7.4.2', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['8.0.2', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['8.1.4', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['8.2.2', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['8.3.2', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['8.4.2', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['8.5.2', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['8.6.1', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-      ['8.7.2', ['7.3.3', '7.4.2', '7.5.1', '7.6.3', '8.0.2',]],
-    ].collectMany { agp, gradleVersions ->
-      gradleVersions.collect { gradle -> [agp, gradle] }
-    }
+      ['9.0.0', '9.1.0'],
+    ]
   }
 }
