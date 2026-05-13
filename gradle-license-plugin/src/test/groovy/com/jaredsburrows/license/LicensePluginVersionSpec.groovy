@@ -93,6 +93,7 @@ final class LicensePluginVersionSpec extends Specification {
     apply plugin: 'com.jaredsburrows.license'
 
     android {
+      namespace 'com.example'
       compileSdkVersion $compileSdkVersion
 
       defaultConfig {

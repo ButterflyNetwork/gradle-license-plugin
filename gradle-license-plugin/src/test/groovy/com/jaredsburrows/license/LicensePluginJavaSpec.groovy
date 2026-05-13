@@ -885,6 +885,7 @@ final class LicensePluginJavaSpec extends Specification {
 
   def 'licenseReport with project dependencies - multi java modules'() {
     given:
+    testProjectDir.newFolder('subproject')
     testProjectDir.newFile('settings.gradle') <<
       """
       include 'subproject'
@@ -1011,6 +1012,12 @@ final class LicensePluginJavaSpec extends Specification {
   def 'licenseReport with project dependencies - deep dependency graph'() {
     given:
     def depth = 18
+
+    (1..depth).each {
+      testProjectDir.newFolder("subproject_${it}a")
+      testProjectDir.newFolder("subproject_${it}b")
+      testProjectDir.newFolder("subproject_${it}c")
+    }
 
     testProjectDir.newFile('settings.gradle') <<
       """
@@ -1196,6 +1203,7 @@ final class LicensePluginJavaSpec extends Specification {
 
   def 'licenseReport using api and implementation configurations with multi java modules'() {
     given:
+    testProjectDir.newFolder('subproject')
     testProjectDir.newFile('settings.gradle') <<
       """
       include 'subproject'
