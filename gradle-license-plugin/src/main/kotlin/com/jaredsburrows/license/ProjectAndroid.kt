@@ -64,13 +64,15 @@ private fun Project.configureVariant(variant: Variant) {
 
     // Custom for Android tasks
     val sourceSetName = if (it.useVariantSpecificAssetDirs) variant.name else "main"
+
     @Suppress("UnstableApiUsage")
     val commonExtension = extensions.getByType(CommonExtension::class.java)
-    val assetDirectoryPaths = commonExtension.sourceSets
-      .findByName(sourceSetName)
-      ?.assets
-      ?.directories
-      .orEmpty()
+    val assetDirectoryPaths =
+      commonExtension.sourceSets
+        .findByName(sourceSetName)
+        ?.assets
+        ?.directories
+        .orEmpty()
     it.assetDirs = assetDirectoryPaths.map { path -> file(path) }
     it.variantName = variant.name
   }
