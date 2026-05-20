@@ -8,9 +8,12 @@ class LicensePlugin : Plugin<Project> {
   override fun apply(project: Project) {
     project.extensions.add("licenseReport", LicenseReportExtension::class.java)
 
+    // AGP's onVariants callback must be registered before project evaluation completes.
+    project.configureAndroidProject()
+
     project.afterEvaluate {
       when {
-        project.isAndroidProject() -> project.configureAndroidProject()
+        project.isAndroidProject() -> Unit
         project.isJavaProject() -> project.configureJavaProject()
         else -> throw UnsupportedOperationException(
           "'com.jaredsburrows.license' requires Java, Kotlin or Android Gradle based plugins.",
