@@ -8,19 +8,13 @@ class LicensePlugin : Plugin<Project> {
   override fun apply(project: Project) {
     project.extensions.add("licenseReport", LicenseReportExtension::class.java)
 
-    // Configure Android variant tasks at apply time. The AGP modern variant API
-    // (`AndroidComponentsExtension.onVariants`) must be registered before project
-    // evaluation completes, so this cannot be wrapped in `afterEvaluate`.
+    // AGP's onVariants callback must be registered before project evaluation completes.
     project.configureAndroidProject()
 
-    // Java configuration is safe to defer to afterEvaluate since it doesn't use
-    // the AGP variant API.
     project.afterEvaluate {
-      val isAndroid = project.isAndroidProject()
-      val isJava = project.isJavaProject()
       when {
-        isAndroid -> Unit // already configured at apply time
-        isJava -> project.configureJavaProject()
+        project.isAndroidProject() -> Unit
+        project.isJavaProject() -> project.configureJavaProject()
         else -> throw UnsupportedOperationException(
           "'com.jaredsburrows.license' requires Java, Kotlin or Android Gradle based plugins.",
         )
