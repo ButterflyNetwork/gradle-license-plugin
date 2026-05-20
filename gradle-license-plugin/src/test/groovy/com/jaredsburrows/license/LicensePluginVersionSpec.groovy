@@ -65,10 +65,10 @@ final class LicensePluginVersionSpec extends Specification {
     result.output.find("Wrote Text report to .*${reportFolder}/licenseReport.txt.")
 
     where:
-    // AGP 9 (used as `testRuntimeOnly`) requires Gradle 9.1+. Older Gradle
+    // AGP 9.2 (used as `testRuntimeOnly`) requires Gradle 9.4.1+. Older Gradle
     // versions are no longer supported by this fork.
     gradleVersion << [
-      '9.1.0',
+      '9.4.1',
     ]
   }
 
@@ -117,11 +117,11 @@ final class LicensePluginVersionSpec extends Specification {
     result.output.find("Wrote Text report to .*${reportFolder}/licenseDebugReport.txt.")
 
     where:
-    // AGP 9 requires Gradle 9.1+. The host repo (ButterflyNetwork/software)
+    // AGP 9.2 requires Gradle 9.4.1+. The host repo (ButterflyNetwork/software)
     // builds this fork only against AGP 9.x, so legacy AGP × Gradle combos
     // are no longer exercised.
     [agpVersion, gradleVersion] << [
-      ['9.0.0', '9.1.0'],
+      ['9.2.1', '9.4.1'],
     ]
   }
 }
