@@ -163,7 +163,7 @@ internal abstract class LicenseReportTask
     ) {
       rootCoordinates
         .asSequence()
-        .distinct()
+        .distinctBy { parseCoordinate(it).let { (group, artifact, _) -> "$group:$artifact" } }
         .mapNotNull { coordinate ->
           val pomFilePath = pomCoordinatesToFile[coordinate] ?: return@mapNotNull null
           coordinate to File(pomFilePath)
